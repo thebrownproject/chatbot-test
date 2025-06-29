@@ -1,180 +1,88 @@
 "use client";
 
-import type { Attachment, UIMessage } from "ai";
-import { useChat } from "@ai-sdk/react";
-import { useEffect, useState } from "react";
-import useSWR, { useSWRConfig } from "swr";
-import { ChatHeader } from "@/components/chat-header";
-import type { Vote } from "@/lib/db/schema";
-import { fetcher, fetchWithErrorHandlers, generateUUID } from "@/lib/utils";
-import { Artifact } from "./artifact";
-import { MultimodalInput } from "./chat-input";
+import { useState } from "react";
 import { Messages } from "./messages";
-import type { VisibilityType } from "./visibility-selector";
-import { useArtifactSelector } from "@/hooks/use-artifact";
-import { unstable_serialize } from "swr/infinite";
-import { getChatHistoryPaginationKey } from "./sidebar-history";
-import { toast } from "./toast";
-import type { Session } from "next-auth";
-import { useSearchParams } from "next/navigation";
-import { useChatVisibility } from "@/hooks/use-chat-visibility";
-import { useAutoResume } from "@/hooks/use-auto-resume";
-import { ChatSDKError } from "@/lib/errors";
+import { ChatInput } from "./chat-input";
+import { SuggestedActions } from "./suggested-actions";
+import { ChatHeader } from "./chat-header";
+import { generateUUID } from "@/lib/utils";
 
-export function Chat({
-  id,
-  initialMessages,
-  initialChatModel,
-  initialVisibilityType,
-  isReadonly,
-  session,
-  autoResume,
-}: {
+// Simple message type
+export interface SimpleMessage {
   id: string;
-  initialMessages: Array<UIMessage>;
-  initialChatModel: string;
-  initialVisibilityType: VisibilityType;
-  isReadonly: boolean;
-  session: Session;
-  autoResume: boolean;
-}) {
-  const { mutate } = useSWRConfig();
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: Date;
+}
 
-  const { visibilityType } = useChatVisibility({
-    chatId: id,
-    initialVisibilityType,
-  });
+// Sample assistant responses for demo
+const DEMO_RESPONSES = [
+  "That's a great question! Let me help you with that.",
+  "I understand what you're looking for. Here's what I think...",
+  "Interesting perspective! Have you considered...",
+  "Let me break this down for you step by step.",
+  "That's definitely something worth exploring further.",
+];
 
-  const {
-    messages,
-    setMessages,
-    handleSubmit,
-    input,
-    setInput,
-    append,
-    status,
-    stop,
-    reload,
-    experimental_resume,
-    data,
-  } = useChat({
-    id,
-    initialMessages,
-    experimental_throttle: 100,
-    sendExtraMessageFields: true,
-    generateId: generateUUID,
-    fetch: fetchWithErrorHandlers,
-    experimental_prepareRequestBody: (body) => ({
-      id,
-      message: body.messages.at(-1),
-      selectedChatModel: initialChatModel,
-      selectedVisibilityType: visibilityType,
-    }),
-    onFinish: () => {
-      mutate(unstable_serialize(getChatHistoryPaginationKey));
-    },
-    onError: (error) => {
-      if (error instanceof ChatSDKError) {
-        toast({
-          type: "error",
-          description: error.message,
-        });
-      }
-    },
-  });
+export function Chat() {
+  const [messages, setMessages] = useState<SimpleMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const searchParams = useSearchParams();
-  const query = searchParams.get("query");
+  const handleSendMessage = async (content: string) => {
+    if (!content.trim()) return;
 
-  const [hasAppendedQuery, setHasAppendedQuery] = useState(false);
+    // Add user message
+    const userMessage: SimpleMessage = {
+      id: generateUUID(),
+      role: 'user',
+      content: content.trim(),
+      createdAt: new Date(),
+    };
 
-  useEffect(() => {
-    if (query && !hasAppendedQuery) {
-      append({
-        role: "user",
-        content: query,
-      });
+    setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
 
-      setHasAppendedQuery(true);
-      window.history.replaceState({}, "", `/chat/${id}`);
-    }
-  }, [query, append, hasAppendedQuery, id]);
+    // Simulate AI response delay
+    setTimeout(() => {
+      const assistantMessage: SimpleMessage = {
+        id: generateUUID(),
+        role: 'assistant',
+        content: DEMO_RESPONSES[Math.floor(Math.random() * DEMO_RESPONSES.length)],
+        createdAt: new Date(),
+      };
 
-  const { data: votes } = useSWR<Array<Vote>>(
-    messages.length >= 2 ? `/api/vote?chatId=${id}` : null,
-    fetcher
-  );
+      setMessages(prev => [...prev, assistantMessage]);
+      setIsLoading(false);
+    }, 1000 + Math.random() * 2000); // Random delay 1-3 seconds
+  };
 
-  const [attachments, setAttachments] = useState<Array<Attachment>>([]);
-  const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
-
-  useAutoResume({
-    autoResume,
-    initialMessages,
-    experimental_resume,
-    data,
-    setMessages,
-  });
+  const handleNewChat = () => {
+    setMessages([]);
+    setIsLoading(false);
+  };
 
   return (
     <>
+      {/* EXACT structure from original - h-dvh, not h-screen */}
       <div className="flex flex-col min-w-0 h-dvh bg-background">
-        <ChatHeader
-          chatId={id}
-          selectedModelId={initialChatModel}
-          selectedVisibilityType={initialVisibilityType}
-          isReadonly={isReadonly}
-          session={session}
-        />
+        {/* ChatHeader - EXACT same as original */}
+        <ChatHeader onNewChat={handleNewChat} />
 
-        <Messages
-          chatId={id}
-          status={status}
-          votes={votes}
+        {/* Messages - EXACT same as original */}
+        <Messages 
           messages={messages}
-          setMessages={setMessages}
-          reload={reload}
-          isReadonly={isReadonly}
-          isArtifactVisible={isArtifactVisible}
+          isLoading={isLoading}
         />
 
+        {/* Form wrapper - EXACT same structure as original */}
         <form className="flex mx-auto px-4 bg-background pb-4 md:pb-6 gap-2 w-full md:max-w-3xl">
-          {!isReadonly && (
-            <MultimodalInput
-              chatId={id}
-              input={input}
-              setInput={setInput}
-              handleSubmit={handleSubmit}
-              status={status}
-              stop={stop}
-              attachments={attachments}
-              setAttachments={setAttachments}
-              messages={messages}
-              setMessages={setMessages}
-              append={append}
-              selectedVisibilityType={visibilityType}
-            />
-          )}
+          <ChatInput 
+            onSendMessage={handleSendMessage}
+            isLoading={isLoading}
+            showSuggestions={messages.length === 0}
+          />
         </form>
       </div>
-
-      <Artifact
-        chatId={id}
-        input={input}
-        setInput={setInput}
-        handleSubmit={handleSubmit}
-        status={status}
-        stop={stop}
-        attachments={attachments}
-        setAttachments={setAttachments}
-        append={append}
-        messages={messages}
-        setMessages={setMessages}
-        reload={reload}
-        votes={votes}
-        isReadonly={isReadonly}
-        selectedVisibilityType={visibilityType}
-      />
     </>
   );
 }

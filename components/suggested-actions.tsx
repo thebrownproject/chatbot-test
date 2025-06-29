@@ -1,42 +1,32 @@
-'use client';
-
 import { motion } from 'framer-motion';
 import { Button } from './ui/button';
 import { memo } from 'react';
-import type { UseChatHelpers } from '@ai-sdk/react';
-import type { VisibilityType } from './visibility-selector';
 
 interface SuggestedActionsProps {
-  chatId: string;
-  append: UseChatHelpers['append'];
-  selectedVisibilityType: VisibilityType;
+  onSendMessage: (message: string) => void;
 }
 
-function PureSuggestedActions({
-  chatId,
-  append,
-  selectedVisibilityType,
-}: SuggestedActionsProps) {
+function PureSuggestedActions({ onSendMessage }: SuggestedActionsProps) {
   const suggestedActions = [
     {
-      title: 'What are the advantages',
-      label: 'of using Next.js?',
-      action: 'What are the advantages of using Next.js?',
+      title: 'How do I block',
+      label: 'distracting websites?',
+      action: 'How do I block distracting websites?',
     },
     {
-      title: 'Write code to',
-      label: `demonstrate djikstra's algorithm`,
-      action: `Write code to demonstrate djikstra's algorithm`,
+      title: 'Set up focus time',
+      label: 'for 2 hours',
+      action: 'Set up focus time for 2 hours',
     },
     {
-      title: 'Help me write an essay',
-      label: `about silicon valley`,
-      action: `Help me write an essay about silicon valley`,
+      title: 'What are the best',
+      label: 'productivity techniques?',
+      action: 'What are the best productivity techniques?',
     },
     {
-      title: 'What is the weather',
-      label: 'in San Francisco?',
-      action: 'What is the weather in San Francisco?',
+      title: 'Help me create',
+      label: 'a study schedule',
+      action: 'Help me create a study schedule',
     },
   ];
 
@@ -56,13 +46,8 @@ function PureSuggestedActions({
         >
           <Button
             variant="ghost"
-            onClick={async () => {
-              window.history.replaceState({}, '', `/chat/${chatId}`);
-
-              append({
-                role: 'user',
-                content: suggestedAction.action,
-              });
+            onClick={() => {
+              onSendMessage(suggestedAction.action);
             }}
             className="text-left border rounded-xl px-4 py-3.5 text-sm flex-1 gap-1 sm:flex-col w-full h-auto justify-start items-start"
           >
@@ -77,13 +62,4 @@ function PureSuggestedActions({
   );
 }
 
-export const SuggestedActions = memo(
-  PureSuggestedActions,
-  (prevProps, nextProps) => {
-    if (prevProps.chatId !== nextProps.chatId) return false;
-    if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType)
-      return false;
-
-    return true;
-  },
-);
+export const SuggestedActions = memo(PureSuggestedActions);
